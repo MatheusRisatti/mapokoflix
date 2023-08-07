@@ -8,6 +8,13 @@ namespace MapokoFlix.Repositories;
 public class MovieRepository : IMovieRepository
 {
     readonly string connectionString = "server=localhost;port=3306;database=MapokoFlixdb;uid=root;pwd=''";
+    readonly IMovieGenreRepository _movieGenreRepository;
+
+    public MovieRepository(IMovieGenreRepository movieGenreRepository)
+    {
+        _movieGenreRepository = movieGenreRepository;
+    }
+
 
     public void Create(Movie model)
     {
@@ -55,12 +62,12 @@ public class MovieRepository : IMovieRepository
             CommandType = CommandType.Text
         };
         
-        List<Movie> movies = new();
+        List<Movie> Movies = new();
         connection.Open();
         MySqlDataReader reader = command.ExecuteReader();
         while (reader.Read())
         {
-            Movie movie = new()
+            Movie Movie = new()
             {
                 Id = reader.GetInt32("id"),
                 Title = reader.GetString("title"),
@@ -71,10 +78,10 @@ public class MovieRepository : IMovieRepository
                 AgeRating = reader.GetByte("ageRating"),
                 Image = reader.GetString("image")
             };
-            movies.Add(movie);
+            Movies.Add(Movie);
         }
         connection.Close();
-        return movies;
+        return Movies;
     }
 
     public Movie ReadById(int? id)
@@ -92,7 +99,7 @@ public class MovieRepository : IMovieRepository
         reader.Read();
         if (reader.HasRows)
         {
-            Movie movie = new()
+            Movie Movie = new()
             {
                 Id = reader.GetInt32("id"),
                 Title = reader.GetString("title"),
@@ -104,7 +111,7 @@ public class MovieRepository : IMovieRepository
                 Image = reader.GetString("image")
             };
             connection.Close();
-            return movie;
+            return Movie;
         }
         connection.Close();
         return null;
@@ -138,5 +145,22 @@ public class MovieRepository : IMovieRepository
         connection.Open();
         command.ExecuteNonQuery();
         connection.Close();
+    }
+
+    public List<Movie> ReadAllDetailed()
+    {
+        List<Movie> Movies = ReadAll();
+        foreach (Movie movie in Movies)
+        {
+            movie.Genres = _movieGenreRepository.ReadGenresByMovie(movie.Id);
+        }
+        return Movies;
+    }
+
+    public Movie ReadByIdDetailed(int id)
+    {
+        Movie movie = ReadById(id);
+        movie.Genres = _movieGenreRepository.ReadGenresByMovie(movie.Id);
+        return movie;
     }
 }
